@@ -44,4 +44,5 @@ export type GameStatus = {
     playTurn: number;
     deck: number[];
     cards?: number[];
+    timestamp: number;
 }
