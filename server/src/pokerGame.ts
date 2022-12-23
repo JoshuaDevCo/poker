@@ -195,6 +195,7 @@ export default class PokerGame {
         const leftPlayer = this.players[index];
         if (!leftPlayer || !leftPlayer.roomId) return;
         const room = getRoom(this.rooms, leftPlayer.roomId);
+        console.log(room);
         if (!room) return;
 
         room.numberOfPlayers--;

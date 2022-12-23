@@ -4,6 +4,7 @@ import express from 'express';
 import path from "path";
 import cors from 'cors';
 import PokerGame from "./pokerGame";
+import fs from 'fs';
 
 const port: number = 4000
 
@@ -15,25 +16,28 @@ class App {
 
     constructor(port: number) {
         this.port = port;
-        
+
         const app = express();
         app.use(cors());
         app.use(express.static(path.join(__dirname, '../../client/build')));
-        // app.get('/test', (req: Request, res: Response) => {
-        //     console.log('test works');
-        //     res.json("Success");
-        // })
+        app.get('*', (req, res) => {
+            const contents = fs.readFileSync(
+                path.resolve(__dirname, '../../client/build/index.html'),
+                'utf8',
+            )
+            res.send(contents)
+        })
 
         this.server = new http.Server(app);
         this.io = new SocketIO.Server(this.server, {
             cors: {
-                origin: "*",
+                // origin: "*",
                 methods: ["GET", "POST"]
             }
         });
 
         this.game = new PokerGame();
-        
+
         this.io.on('connection', (socket: SocketIO.Socket) => {
             // console.log('a user connected', socket.id);
             socket.on('joinGame', (data) => this.game.joinGame(socket, data));
@@ -49,7 +53,7 @@ class App {
             socket.on("startRoomGame", (data) => this.game.startRoomGame(data));
 
             socket.on("updateGameStatus", (data) => this.game.updateGameStatus(socket, data));
-            
+
             socket.on('disconnect', () => {
                 this.game.leaveGame(socket);
             })

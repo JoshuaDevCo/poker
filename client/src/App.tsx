@@ -5,6 +5,7 @@ import { io, Socket } from "socket.io-client";
 import { Player, PlayStatus, Room } from "./types";
 
 const socket: Socket = io("ws://164.90.159.186:4000");
+// const socket: Socket = io("ws://192.168.116.183:4000");
 
 function App() {
   const [player, setPlayer] = useState<Player | null>();
@@ -89,7 +90,7 @@ function App() {
   function startGame() {
     socket.emit("startRoomGame", { roomId: currentRoom?.id });
   }
-  
+
   socket.on("updatedGameStatus", ({ room, player }: { room: Room, player: Player }) => {
     setCurrentRoom(room);
     setPlayer(player);
@@ -162,16 +163,18 @@ function App() {
               <p>Room: {currentRoom.name}</p>
               <p>Creator: {currentRoom.creator.name}</p>
               <p>Players: {currentRoom.numberOfPlayers}</p>
-              {currentRoom.creator.id === player.id ? (
-                <div>
-                  <button onClick={closeRoom}>Close Room</button>
-                  {currentRoom.numberOfPlayers > 1 && !currentRoom.started && <button onClick={startGame}>Start Game</button>}
-                </div>
-              ) : (
-                <div>
-                  <button onClick={leaveRoom}>Left Room</button>
-                </div>
-              )}
+              {!currentRoom.started && <>
+                {currentRoom.creator.id === player.id ? (
+                  <div>
+                    <button onClick={closeRoom}>Close Room</button>
+                    {currentRoom.numberOfPlayers > 1 && !currentRoom.started && <button onClick={startGame}>Start Game</button>}
+                  </div>
+                ) : (
+                  <div>
+                    <button onClick={leaveRoom}>Left Room</button>
+                  </div>
+                )}
+              </>}
               {currentRoom.started && currentRoom.gameStatus && (
                 <div>
                   <div>
