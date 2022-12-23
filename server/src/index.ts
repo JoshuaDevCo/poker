@@ -27,7 +27,7 @@ class App {
         this.server = new http.Server(app);
         this.io = new SocketIO.Server(this.server, {
             cors: {
-                // origin: "http://192.168.116.183:4000/",
+                origin: "ws://164.90.159.186:4000",
                 methods: ["GET", "POST"]
             }
         });
