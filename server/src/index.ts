@@ -27,7 +27,7 @@ class App {
         this.server = new http.Server(app);
         this.io = new SocketIO.Server(this.server, {
             cors: {
-                origin: "https://poker-puce.vercel.app/",
+                origin: "*",
                 methods: ["GET", "POST"]
             }
         });
