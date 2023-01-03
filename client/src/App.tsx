@@ -4,8 +4,8 @@ import { useState } from "react";
 import { io, Socket } from "socket.io-client";
 import { Player, PlayStatus, Room } from "./types";
 
-const socket: Socket = io("ws://164.90.159.186:4000");
-// const socket: Socket = io("ws://192.168.116.183:4000");
+// const socket: Socket = io("ws://164.90.159.186:4000");
+const socket: Socket = io("ws://192.168.116.183:4000");
 
 function App() {
   const [player, setPlayer] = useState<Player | null>();

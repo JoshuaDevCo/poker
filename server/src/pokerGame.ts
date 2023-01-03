@@ -362,6 +362,7 @@ export default class PokerGame {
         // start new round after 10 seconds
         setTimeout(() => {
             this.startNewRound(room);
+            if (!room.players) return;
             room.players.forEach((player) => {
 
                 const playerId = getPlayerIndex(this.players, player.id);
