@@ -280,6 +280,7 @@ export default class PokerGame {
             const { gameStatus } = room;
             if (gameStatus && new Date().getTime() - gameStatus.timestamp >= PLAYER_WAIT_TIME) {
                 const player = room.players[gameStatus.playTurn];
+                if (!player) return;
                 const { playerStatus } = player;
                 if (!playerStatus) return;
                 const playerIndex = getPlayerIndex(this.players, player.id);
@@ -401,10 +402,11 @@ export default class PokerGame {
     }
 
     public updateGameStatus(socket: Socket, { roomId, status, amount }: { roomId: string, status: PlayStatus, amount?: number }): void {
+        if (!socket) return;
         const index = getIndex(this.sockets, socket.id);
         let player = this.players[index];
         const room = getRoom(this.rooms, roomId);
-        if (!room.gameStatus) return;
+        if (!room || !room.gameStatus) return;
 
         const gameStatus = room.gameStatus;
         const playerIndex = room.players.map(player => player.id).indexOf(player.id);
@@ -491,6 +493,7 @@ export default class PokerGame {
             const { gameStatus } = room;
             if (gameStatus && new Date().getTime() - gameStatus.timestamp >= PLAYER_WAIT_TIME) {
                 const player = room.players[gameStatus.playTurn];
+                if (!player) return;
                 const { playerStatus } = player;
                 if (!playerStatus) return;
                 const playerIndex = getPlayerIndex(this.players, player.id);
