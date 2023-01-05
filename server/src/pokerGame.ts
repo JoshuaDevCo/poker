@@ -73,12 +73,17 @@ const nextTurn = (room: Room, turn?: number) => {
     const { gameStatus } = room;
     if (!gameStatus) return 0;
     if (!turn) turn = gameStatus.playTurn;
+    let inActivePlayers = 0;
     while (true) {
         turn = (turn + 1) % room.numberOfPlayers;
         const player = room.players[turn];
         const { playerStatus } = player;
         if (!playerStatus) break;
         if (playerStatus.status !== PlayStatus.FOLD && playerStatus.status !== PlayStatus.BUST && playerStatus.status !== PlayStatus.ALLIN) break;
+        inActivePlayers++;
+        if (inActivePlayers === room.numberOfPlayers) {
+            return -1;
+        }
     }
     return turn;
 }
@@ -87,12 +92,17 @@ const prevTurn = (room: Room, turn?: number) => {
     const { gameStatus } = room;
     if (!gameStatus) return 0;
     if (!turn) turn = gameStatus.playTurn;
+    let inActivePlayers = 0;
     while (true) {
         turn = (turn - 1 + room.numberOfPlayers) % room.numberOfPlayers;
         const player = room.players[turn];
         const { playerStatus } = player;
         if (!playerStatus) break;
         if (playerStatus.status !== PlayStatus.FOLD && playerStatus.status !== PlayStatus.BUST && playerStatus.status !== PlayStatus.ALLIN) break;
+        inActivePlayers++;
+        if (inActivePlayers === room.numberOfPlayers) {
+            return -1;
+        }
     }
     return turn;
 }
@@ -225,9 +235,16 @@ export default class PokerGame {
 
     startNewRound = (room: Room) => {
         const shuffledCards = shuffleCards(cards);
+        
+        room.players.forEach((player) => {
+            if (!player || !player.playerStatus) return;
+            player.playerStatus.status = player.balance === 0 ? PlayStatus.BUST : PlayStatus.NONE;
+        });
+
         let blindTurn = rand(room.numberOfPlayers);
         if (room.gameStatus) {
             blindTurn = nextTurn(room, room.gameStatus.blindTurn);
+            if (blindTurn === -1) return;
         }
         const gameStatus: GameStatus = {
             round: 1,
@@ -457,6 +474,10 @@ export default class PokerGame {
         } else if (status === PlayStatus.FOLD) {
             playerStatus.status = PlayStatus.FOLD;
             gameStatus.playTurn = nextTurn(room);
+            if (gameStatus.playTurn === -1) {
+                while (!this.dealCards(room));
+                return;
+            }
 
             let nextPlayer = room.players[gameStatus.playTurn];
             if (nextPlayer.playerStatus?.subTotalBetAmount === gameStatus.currentBetAmount) {
@@ -478,6 +499,7 @@ export default class PokerGame {
             if (activePlayers === 1) {
                 while (!this.dealCards(room));
             }
+            
         } else if (status === PlayStatus.ALLIN) {
             playerStatus.status = PlayStatus.ALLIN;
             playerStatus.subTotalBetAmount += player.balance;
