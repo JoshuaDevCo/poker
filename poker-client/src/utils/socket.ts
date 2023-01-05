@@ -45,4 +45,8 @@ export const check = (roomId: string) => {
     socket.emit("updateGameStatus", { roomId, status: PlayStatus.CHECK });
 }
 
+export const allIn = (roomId: string) => {
+    socket.emit("updateGameStatus", { roomId, status: PlayStatus.ALLIN });
+}
+
 export default socket;

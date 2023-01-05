@@ -77,7 +77,8 @@ const nextTurn = (room: Room, turn?: number) => {
         turn = (turn + 1) % room.numberOfPlayers;
         const player = room.players[turn];
         const { playerStatus } = player;
-        if (playerStatus?.status !== PlayStatus.FOLD && playerStatus?.status !== PlayStatus.BUST) break;
+        if (!playerStatus) break;
+        if (playerStatus.status !== PlayStatus.FOLD && playerStatus.status !== PlayStatus.BUST && playerStatus.status !== PlayStatus.ALLIN) break;
     }
     return turn;
 }
@@ -90,7 +91,8 @@ const prevTurn = (room: Room, turn?: number) => {
         turn = (turn - 1 + room.numberOfPlayers) % room.numberOfPlayers;
         const player = room.players[turn];
         const { playerStatus } = player;
-        if (playerStatus?.status !== PlayStatus.FOLD && playerStatus?.status !== PlayStatus.BUST) break;
+        if (!playerStatus) break;
+        if (playerStatus.status !== PlayStatus.FOLD && playerStatus.status !== PlayStatus.BUST && playerStatus.status !== PlayStatus.ALLIN) break;
     }
     return turn;
 }
@@ -476,6 +478,15 @@ export default class PokerGame {
             if (activePlayers === 1) {
                 while (!this.dealCards(room));
             }
+        } else if (status === PlayStatus.ALLIN) {
+            playerStatus.status = PlayStatus.ALLIN;
+            playerStatus.subTotalBetAmount += player.balance;
+            if (gameStatus.currentBetAmount < playerStatus.subTotalBetAmount) {
+                gameStatus.currentBetAmount = playerStatus.subTotalBetAmount;
+            }
+            gameStatus.pot += player.balance;
+            player.balance = 0;
+            gameStatus.playTurn = nextTurn(room);
         }
 
         room.gameStatus.timestamp = new Date().getTime();

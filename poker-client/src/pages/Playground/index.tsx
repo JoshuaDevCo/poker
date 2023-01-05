@@ -8,7 +8,7 @@ import { useSelector } from 'store';
 import { Player, PlayStatus } from 'utils/types';
 import PlayerItem from 'components/Player';
 import NumericInput from 'react-numeric-input';
-import { call, check, fold, raise } from 'utils/socket';
+import { allIn, call, check, fold, raise } from 'utils/socket';
 
 // import { useNavigate } from 'react-router';
 
@@ -27,6 +27,11 @@ const Playground = () => {
     const handleRaiseBtn = () => {
         if (!currentRoom) return;
         raise(currentRoom.id, raiseAmount);
+    }
+
+    const handleAllInBtn = () => {
+        if (!currentRoom) return;
+        allIn(currentRoom.id);
     }
 
     const handleCheckBtn = () => {
@@ -61,18 +66,22 @@ const Playground = () => {
                                             <div className={`flex btn-ctrl-bar player-${index + 1}`}>
                                                 <div className='flex btn-ctrls'>
                                                     {player.playerStatus.subTotalBetAmount === currentRoom.gameStatus.currentBetAmount ?
-                                                        <div className="btn-ctrl btn-check" onClick={handleCheckBtn}>
+                                                        <div className="btn-ctrl" onClick={handleCheckBtn}>
                                                             <p>Check</p>
                                                         </div> :
-                                                        <div className="btn-ctrl btn-call" onClick={handleCallBtn}>
+                                                        <div className="btn-ctrl" onClick={handleCallBtn}>
                                                             <p>Call({currentRoom.gameStatus.currentBetAmount - player.playerStatus.subTotalBetAmount})</p>
                                                         </div>
                                                     }
-                                                    <div className="btn-ctrl btn-raise" onClick={handleRaiseBtn}>
+                                                    <div className="btn-ctrl" onClick={handleRaiseBtn}>
                                                         <p>Raise</p>
                                                     </div>
 
-                                                    <div className="btn-ctrl btn-fold" onClick={handleFoldBtn}>
+                                                    <div className="btn-ctrl" onClick={handleAllInBtn}>
+                                                        <p>All-In</p>
+                                                    </div>
+
+                                                    <div className="btn-ctrl" onClick={handleFoldBtn}>
                                                         <p>Fold</p>
                                                     </div>
                                                 </div>
