@@ -6,7 +6,7 @@ import cors from 'cors';
 import PokerGame from "./pokerGame";
 import fs from 'fs';
 
-const port: number = 4000
+const port: number = 8000
 
 class App {
     private server: http.Server;
