@@ -57,9 +57,9 @@
         .content {
             align-self: center;
             background-color: red;
-            padding: 2px;
+            padding: 4px;
             border-radius: 50%;
-            width: 25px;
+            // width: 25px;
             text-align: center;
         }
     }
@@ -280,7 +280,7 @@
             border-radius: 10px;
             text-align: center;
             background-color: white;
-
+            white-space: nowrap;
             .tooltiptext {
                 visibility: hidden;
                 width: 80px;

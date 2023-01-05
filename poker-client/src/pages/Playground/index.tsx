@@ -65,24 +65,27 @@ const Playground = () => {
                                             (index === currentRoom.gameStatus?.playTurn && player.id === otherPlayer.id && player.playerStatus && !currentRoom.gameStatus.roundFinished) &&
                                             <div className={`flex btn-ctrl-bar player-${index + 1}`}>
                                                 <div className='flex btn-ctrls'>
-                                                    {player.playerStatus.subTotalBetAmount === currentRoom.gameStatus.currentBetAmount ?
-                                                        <div className="btn-ctrl" onClick={handleCheckBtn}>
-                                                            <p>Check</p>
-                                                        </div> :
-                                                        <div className="btn-ctrl" onClick={handleCallBtn}>
-                                                            <p>Call({currentRoom.gameStatus.currentBetAmount - player.playerStatus.subTotalBetAmount})</p>
+                                                    <div>
+                                                        {player.playerStatus.subTotalBetAmount === currentRoom.gameStatus.currentBetAmount ?
+                                                            <div className="btn-ctrl" onClick={handleCheckBtn}>
+                                                                <p>Check</p>
+                                                            </div> :
+                                                            <div className="btn-ctrl" onClick={handleCallBtn}>
+                                                                <p>Call({currentRoom.gameStatus.currentBetAmount - player.playerStatus.subTotalBetAmount})</p>
+                                                            </div>
+                                                        }
+                                                        <div className="btn-ctrl" onClick={handleRaiseBtn}>
+                                                            <p>Raise</p>
                                                         </div>
-                                                    }
-                                                    <div className="btn-ctrl" onClick={handleRaiseBtn}>
-                                                        <p>Raise</p>
                                                     </div>
+                                                    <div>
+                                                        <div className="btn-ctrl" onClick={handleAllInBtn}>
+                                                            <p>All-In</p>
+                                                        </div>
 
-                                                    <div className="btn-ctrl" onClick={handleAllInBtn}>
-                                                        <p>All-In</p>
-                                                    </div>
-
-                                                    <div className="btn-ctrl" onClick={handleFoldBtn}>
-                                                        <p>Fold</p>
+                                                        <div className="btn-ctrl" onClick={handleFoldBtn}>
+                                                            <p>Fold</p>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 <NumericInput step={5} value={raiseAmount} onChange={(value: number | null, stringValue: string, input: HTMLInputElement) => { if (value !== null) setRaiseAmount(value) }} />

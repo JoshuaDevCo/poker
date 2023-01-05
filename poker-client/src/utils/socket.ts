@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { PlayStatus } from './types';
 
-// const url = window.location.origin;
+// const url = "ws://localhost:8000";
 const url = "ws://poker.zenstudios.xyz";
 const socket: Socket = io(url);
 
