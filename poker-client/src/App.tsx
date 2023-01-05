@@ -35,8 +35,9 @@ function App() {
   socket.on("closedRoom", ({ roomId }: { roomId: string }) => {
     if (currentRoom?.id === roomId) {
       dispatch(closedCurrentRoom());
+    } else {
+      dispatch(closedRoom({ roomId }));
     }
-    dispatch(closedRoom({ roomId }));
   });
 
   socket.on("updatedRoom", ({ room }: { room: Room }) => {
