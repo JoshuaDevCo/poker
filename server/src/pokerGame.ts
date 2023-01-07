@@ -450,10 +450,10 @@ export default class PokerGame {
             gameStatus.pot += betAmount;
 
             gameStatus.playTurn = nextTurn(room);
-            let nextPlayer = room.players[gameStatus.playTurn];
-            if (nextPlayer.playerStatus?.subTotalBetAmount === gameStatus.currentBetAmount) {
-                dealCardsFlag = this.dealCards(room);
-            }
+            // let nextPlayer = room.players[gameStatus.playTurn];
+            // if (nextPlayer.playerStatus?.subTotalBetAmount === gameStatus.currentBetAmount) {
+            //     dealCardsFlag = this.dealCards(room);
+            // }
         } else if (status === PlayStatus.RAISE && amount) {
             let betAmount = gameStatus.currentBetAmount + amount - playerStatus.subTotalBetAmount;
             if (player.balance < betAmount) {
