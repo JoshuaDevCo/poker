@@ -1,6 +1,9 @@
+import { Socket } from "socket.io";
+
 export type PlayerStatus = {
     totalBetAmout: number;
     subTotalBetAmount: number;
+    raised: boolean;
     status: PlayStatus;
     deck: number[];
     winAmount: number;
@@ -21,6 +24,7 @@ export type Player = {
     id: string;
     name: string;
     balance: number;
+    socket?: Socket;
     roomId?: string;
     playerStatus?: PlayerStatus;
 };

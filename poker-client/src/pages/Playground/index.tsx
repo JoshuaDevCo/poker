@@ -10,14 +10,12 @@ import PlayerItem from 'components/Player';
 import NumericInput from 'react-numeric-input';
 import { allIn, call, check, fold, raise } from 'utils/socket';
 
-// import { useNavigate } from 'react-router';
 
 const Playground = () => {
     const { currentRoom } = useSelector((state) => state.currentRoom);
     const { player } = useSelector((state) => state.player);
     const [raiseAmount, setRaiseAmount] = useState(10);
 
-    // const navigate = useNavigate();
 
     const handleCallBtn = () => {
         if (!currentRoom) return;
