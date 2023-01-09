@@ -1,6 +1,8 @@
+
 export type PlayerStatus = {
     totalBetAmout: number;
     subTotalBetAmount: number;
+    raised: boolean;
     status: PlayStatus;
     deck: number[];
     winAmount: number;
