@@ -1,46 +1,21 @@
 import { Player, PlayStatus, Room } from "./types";
 
-export function compare(item: any, value: any): boolean {
-    return item?.id === value;
-}
-
-export function findIndexByKey(source: Array<any>, value: any, cmp = compare ): number {
-    const index = source.findIndex(item => compare(item, value));
-
-    if (index === -1) {
-        // throw new Error('...');
-        // console.log('blah blah ...');
-    }
-
-    return index;
-}
-
-export function findByKey(source: Array<any>, value: any, cmp = compare): any {
-    // return source.find(item => compare(item, value));
-    return source[findIndexByKey(source, value, cmp)]
-}
-
-export function rand(limit: number): number {
+export function rand(limit: number) {
     return Math.floor(Math.random() * limit)
 }
 
-export function getPlayerIndex(players: Player[], id: string): number {
-    // return players.map(player => player.id).indexOf(id);
-    return findIndexByKey(players, id);
+export function getPlayerIndex(players: Player[], id: string) {
+    return players.map(player => player.id).indexOf(id);
 }
 
 export function getPlayerBySocket(players: Player[], socketId: string): Player {
-    // const index = players.map(player => player.socket?.id).indexOf(socketId);
-    // return players[index];
-    return findByKey(players, socketId, function(item: any, value: any) {
-        return item?.socket?.id === socketId;
-    });
+    const index = players.map(player => player.socket?.id).indexOf(socketId);
+    return players[index];
 }
 
-export function getRoom(rooms: Room[], id: string): Room {
-    // const index = rooms.findIndex(room => room?.id === id);
-    // return rooms[index];
-    return findByKey(rooms, id);
+export function getRoom(rooms: Room[], id: string) {
+    const index = rooms.map(room => room.id).indexOf(id);
+    return rooms[index];
 }
 
 export function cutSocket(player: Player): Player {
@@ -93,10 +68,10 @@ export function cutRoomCards(room: Room): Room {
     return { gameStatus: { ...restStatus }, ...rest };
 }
 
-export const cards: Array<number> = [];
+export const cards: number[] = [];
 for (let i = 0; i < 52; i++) cards[i] = i;
 
-export function shuffleCards(cards: Array<number>): Array<number> {
+export function shuffleCards(cards: number[]) {
     const newCards = [...cards];
     for (let i = 0; i < 1000; i++) {
         let location1 = rand(cards.length);
@@ -108,7 +83,7 @@ export function shuffleCards(cards: Array<number>): Array<number> {
     return newCards;
 }
 
-export const nextTurn = (room: Room, turn?: number): number => {
+export const nextTurn = (room: Room, turn?: number) => {
     const { gameStatus } = room;
     if (!gameStatus) return 0;
     if (!turn) turn = gameStatus.playTurn;
@@ -127,7 +102,7 @@ export const nextTurn = (room: Room, turn?: number): number => {
     return turn;
 }
 
-export const prevTurn = (room: Room, turn?: number): number => {
+export const prevTurn = (room: Room, turn?: number) => {
     const { gameStatus } = room;
     if (!gameStatus) return 0;
     if (!turn) turn = gameStatus.playTurn;
@@ -146,7 +121,7 @@ export const prevTurn = (room: Room, turn?: number): number => {
     return turn;
 }
 
-export const cardString = (cardval: number): string => {
+export const cardString = (cardval: number) => {
     const suit = ["d", "c", "h", "s"][Math.floor(cardval / 13)];
     cardval %= 13;
     let val = `${cardval + 2}`;
