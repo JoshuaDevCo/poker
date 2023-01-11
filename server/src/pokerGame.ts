@@ -1,8 +1,26 @@
 import { Socket } from "socket.io";
 import { GameStatus, Player, PlayerStatus, PlayStatus, Room } from "./types";
-import { v4 as uuidV4 } from 'uuid';
+import { v4 as uuidV4 } from "uuid";
 import { PLAYER_WAIT_TIME, ROUND_WAIT_TIME } from "./constants";
-import { cards, cardString, cutGameStatus, cutPlayers, cutPlayersCards, cutRoomCards, cutSocket, cutSockets, getPlayerBySocket, getPlayerIndex, getRoom, nextTurn, prevTurn, rand, shuffleCards } from "./utils";
+import {
+  cards,
+  cardString,
+  cutGameStatus,
+  cutPlayers,
+  cutPlayersCards,
+  cutRoomCards,
+  cutSocket,
+  cutSockets,
+  getPlayerBySocket,
+  getPlayerIndex,
+  getRoom,
+  nextTurn,
+  prevTurn,
+  rand,
+  shuffleCards,
+  findIndexByKey,
+  findByKey
+} from "./utils";
 
 const Hand = require("pokersolver").Hand;
 
@@ -78,7 +96,7 @@ export default class PokerGame {
             if (room.numberOfPlayers >= 10) {
                 return;
             }
-            if (room.players.map(player => player.id).indexOf(newPlayer.id) !== -1) {
+            if (findIndexByKey(room.players, newPlayer.id) !== -1) {
                 return;
             }
 
@@ -328,7 +346,7 @@ export default class PokerGame {
             const { gameStatus } = room;
             if (!gameStatus) return;
 
-            const playerIndex = room.players.map(player => player.id).indexOf(player.id);
+            const playerIndex = findIndexByKey(room.players, player.id);
             if (playerIndex === -1 || playerIndex !== gameStatus.playTurn || !gameStatus.cards) {
                 return;
             }
