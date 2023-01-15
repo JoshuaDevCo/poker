@@ -1,17 +1,37 @@
 import { Socket } from "socket.io";
 import { GameStatus, Player, PlayerStatus, PlayStatus, Room } from "./types";
-import { v4 as uuidV4 } from 'uuid';
+import { v4 as uuidV4 } from "uuid";
 import { PLAYER_WAIT_TIME, ROUND_WAIT_TIME } from "./constants";
-import { cards, cardString, cutGameStatus, cutPlayers, cutPlayersCards, cutRoomCards, cutSocket, cutSockets, getPlayerBySocket, getPlayerIndex, getRoom, nextTurn, prevTurn, rand, shuffleCards } from "./utils";
+import {
+  cards,
+  cardString,
+  cutGameStatus,
+  cutPlayers,
+  cutPlayersCards,
+  cutRoomCards,
+  cutSocket,
+  cutSockets,
+  getPlayerBySocket,
+  getPlayerIndex,
+  getRoom,
+  nextTurn,
+  prevTurn,
+  rand,
+  shuffleCards,
+  findIndexByKey,
+  findByKey
+} from "./utils";
 
 const Hand = require("pokersolver").Hand;
 
 export default class PokerGame {
     private players: Player[];
     private rooms: Room[];
+    private logs: string[];
     constructor() {
         this.players = [];
         this.rooms = [];
+        this.logs = [];
     }
 
     public joinGame(socket: Socket, { name }: { name: string }): void {
@@ -78,7 +98,7 @@ export default class PokerGame {
             if (room.numberOfPlayers >= 10) {
                 return;
             }
-            if (room.players.map(player => player.id).indexOf(newPlayer.id) !== -1) {
+            if (findIndexByKey(room.players, newPlayer.id) !== -1) {
                 return;
             }
 
@@ -328,7 +348,7 @@ export default class PokerGame {
             const { gameStatus } = room;
             if (!gameStatus) return;
 
-            const playerIndex = room.players.map(player => player.id).indexOf(player.id);
+            const playerIndex = findIndexByKey(room.players, player.id);
             if (playerIndex === -1 || playerIndex !== gameStatus.playTurn || !gameStatus.cards) {
                 return;
             }
@@ -336,6 +356,8 @@ export default class PokerGame {
             player = room.players[playerIndex];
             const { playerStatus } = player;
             if (!playerStatus) return;
+
+            let log = player.name + ": ";
 
             playerStatus.status = status;
 
@@ -352,9 +374,10 @@ export default class PokerGame {
 
                 gameStatus.playTurn = nextTurn(room);
                 let nextPlayer = room.players[gameStatus.playTurn];
-                if (nextPlayer.playerStatus?.raised && nextPlayer.playerStatus?.subTotalBetAmount === gameStatus.currentBetAmount) {
-                    dealCardsFlag = this.dealCards(room);
-                }
+                // if (nextPlayer.playerStatus?.raised && nextPlayer.playerStatus?.subTotalBetAmount === gameStatus.currentBetAmount) {
+                //     dealCardsFlag = this.dealCards(room);
+                // }
+                log += "Call";
             } else if (status === PlayStatus.RAISE && amount) {
                 let betAmount = gameStatus.currentBetAmount + amount - playerStatus.subTotalBetAmount;
                 if (player.balance < betAmount) {
@@ -367,12 +390,15 @@ export default class PokerGame {
                 gameStatus.pot += betAmount;
 
                 gameStatus.playTurn = nextTurn(room);
+
+                log += ("Raise " + betAmount);
             } else if (status === PlayStatus.CHECK) {
                 if (nextTurn(room) === nextTurn(room, gameStatus.blindTurn)) {
                     dealCardsFlag = this.dealCards(room);
                 } else {
                     gameStatus.playTurn = nextTurn(room);
                 }
+                log += "Check";
             } else if (status === PlayStatus.FOLD) {
                 playerStatus.status = PlayStatus.FOLD;
                 gameStatus.playTurn = nextTurn(room);
@@ -402,7 +428,7 @@ export default class PokerGame {
                     while (!this.dealCards(room));
                     dealCardsFlag = true;
                 }
-
+                log += "Check";
             } else if (status === PlayStatus.ALLIN) {
                 playerStatus.status = PlayStatus.ALLIN;
                 playerStatus.subTotalBetAmount += player.balance;
@@ -417,14 +443,18 @@ export default class PokerGame {
                     while (!this.dealCards(room));
                     dealCardsFlag = true;
                 }
+
+                log += "All In";
             }
 
             gameStatus.timestamp = new Date().getTime();
 
             if (dealCardsFlag) return;
 
+            this.logs.push(log);
+
             room.players.forEach((player) => {
-                player.socket?.emit("updatedGameStatus", { room: cutPlayersCards(cutRoomCards(cutSockets(room))), player: cutSocket(player) });
+                player.socket?.emit("updatedGameStatus", { room: cutPlayersCards(cutRoomCards(cutSockets(room))), player: cutSocket(player), logs: this.logs });
             });
 
 

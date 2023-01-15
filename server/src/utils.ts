@@ -4,6 +4,26 @@ export function rand(limit: number) {
     return Math.floor(Math.random() * limit)
 }
 
+export function compare(item: any, value: any): boolean {
+    return item?.id === value;
+}
+
+export function findIndexByKey(source: Array<any>, value: any, cmp = compare ): number {
+    const index = source.findIndex(item => cmp(item, value));
+
+    if (index === -1) {
+        // throw new Error('...');
+        // console.log('blah blah ...');
+    }
+
+    return index;
+}
+
+export function findByKey(source: Array<any>, value: any, cmp = compare): any {
+    // return source.find(item => compare(item, value));
+    return source[findIndexByKey(source, value, cmp)]
+}
+
 export function getPlayerIndex(players: Player[], id: string) {
     return players.map(player => player.id).indexOf(id);
 }

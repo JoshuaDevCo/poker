@@ -12,7 +12,7 @@ import { allIn, call, check, fold, raise } from 'utils/socket';
 
 
 const Playground = () => {
-    const { currentRoom } = useSelector((state) => state.currentRoom);
+    const { currentRoom, logs } = useSelector((state) => state.currentRoom);
     const { player } = useSelector((state) => state.player);
     const [raiseAmount, setRaiseAmount] = useState(10);
 
@@ -173,6 +173,14 @@ const Playground = () => {
                     </div>
                 </>
             }
+            <div className='logs'>
+                <div>
+                    {logs && logs.map((log, index) => (
+                        <p key={log + index}>{log}</p>
+                    ))}
+
+                </div>
+            </div>
         </div >
     );
 }

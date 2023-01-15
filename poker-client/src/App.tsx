@@ -3,7 +3,7 @@ import socket from "utils/socket";
 import { useDispatch, useSelector } from "store";
 import { joinedGame, setPlayer } from "slices/player";
 import { closedRoom, createdRoom, setRooms, updatedRoom } from "slices/rooms";
-import { closedCurrentRoom, setCurrentRoom } from "slices/currentRoom";
+import { closedCurrentRoom, setCurrentRoom, setLogs } from "slices/currentRoom";
 import { Player, Room } from "utils/types";
 import router from "./router";
 
@@ -44,9 +44,10 @@ function App() {
     dispatch(updatedRoom({ room }));
   });
 
-  socket.on("updatedGameStatus", ({ room, player }: { room: Room, player: Player }) => {
+  socket.on("updatedGameStatus", ({ room, player, logs }: { room: Room, player: Player, logs: string[] }) => {
     dispatch(setCurrentRoom({ room }));
     dispatch(setPlayer({ player }));
+    dispatch(setLogs({ logs }));
   });
 
 
