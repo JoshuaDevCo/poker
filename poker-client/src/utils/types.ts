@@ -41,6 +41,7 @@ export type GameStatus = {
     round: number,
     roundFinished: boolean,
     currentBetAmount: number;
+    minRaiseAmount: number;
     pot: number;
     blindTurn: number;
     playTurn: number;

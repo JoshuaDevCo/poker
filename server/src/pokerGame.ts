@@ -19,7 +19,6 @@ import {
   rand,
   shuffleCards,
   findIndexByKey,
-  findByKey
 } from "./utils";
 
 const Hand = require("pokersolver").Hand;
@@ -192,6 +191,9 @@ export default class PokerGame {
             round: 1,
             roundFinished: false,
             currentBetAmount: 0,
+            smallBlindAmount: 5,
+            bigBlindAmount: 10,
+            minRaiseAmount: 10,
             pot: 0,
             blindTurn,
             playTurn: blindTurn,
@@ -224,7 +226,7 @@ export default class PokerGame {
         room.players.forEach((player, index) => {
             const { playerStatus } = player;
             if (playerStatus && (index === blindTurn || index === prevTurn(room, blindTurn))) {
-                let amount = index === blindTurn ? 10 : 5;
+                let amount = index === blindTurn ? gameStatus.bigBlindAmount : gameStatus.smallBlindAmount;
                 if (gameStatus.currentBetAmount < amount) gameStatus.currentBetAmount = amount;
                 if (player.balance >= amount) {
                     playerStatus.subTotalBetAmount = amount;
@@ -373,7 +375,7 @@ export default class PokerGame {
                 gameStatus.pot += betAmount;
 
                 gameStatus.playTurn = nextTurn(room);
-                let nextPlayer = room.players[gameStatus.playTurn];
+                // let nextPlayer = room.players[gameStatus.playTurn];
                 // if (nextPlayer.playerStatus?.raised && nextPlayer.playerStatus?.subTotalBetAmount === gameStatus.currentBetAmount) {
                 //     dealCardsFlag = this.dealCards(room);
                 // }
@@ -381,6 +383,11 @@ export default class PokerGame {
             } else if (status === PlayStatus.RAISE && amount) {
                 let betAmount = gameStatus.currentBetAmount + amount - playerStatus.subTotalBetAmount;
                 if (player.balance < betAmount) {
+                    return;
+                }
+                if (gameStatus.minRaiseAmount <= amount) {
+                    gameStatus.minRaiseAmount = amount;
+                } else {
                     return;
                 }
                 player.balance -= betAmount;
@@ -434,6 +441,10 @@ export default class PokerGame {
                 playerStatus.subTotalBetAmount += player.balance;
                 if (gameStatus.currentBetAmount < playerStatus.subTotalBetAmount) {
                     gameStatus.currentBetAmount = playerStatus.subTotalBetAmount;
+                    const raiseAmount = playerStatus.subTotalBetAmount - gameStatus.currentBetAmount;
+                    if (gameStatus.minRaiseAmount < raiseAmount) {
+                        gameStatus.minRaiseAmount = raiseAmount;
+                    }
                 }
                 gameStatus.pot += player.balance;
                 player.balance = 0;
@@ -511,6 +522,9 @@ export default class PokerGame {
                 round: 0,
                 roundFinished: false,
                 currentBetAmount: 30,
+                smallBlindAmount: 5,
+                bigBlindAmount: 10,
+                minRaiseAmount: 10,
                 pot,
                 blindTurn: 0,
                 playTurn: 0,

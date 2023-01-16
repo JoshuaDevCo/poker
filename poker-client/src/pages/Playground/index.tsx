@@ -24,7 +24,9 @@ const Playground = () => {
 
     const handleRaiseBtn = () => {
         if (!currentRoom) return;
-        raise(currentRoom.id, raiseAmount);
+        if (currentRoom.gameStatus && raiseAmount >= currentRoom.gameStatus.minRaiseAmount) {
+            raise(currentRoom.id, raiseAmount);
+        }
     }
 
     const handleAllInBtn = () => {
@@ -86,7 +88,7 @@ const Playground = () => {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <NumericInput step={5} value={raiseAmount} onChange={(value: number | null, stringValue: string, input: HTMLInputElement) => { if (value !== null) setRaiseAmount(value) }} />
+                                                <NumericInput step={5} min={currentRoom.gameStatus.minRaiseAmount} value={raiseAmount} onChange={(value: number | null) => { if (value !== null) setRaiseAmount(value) }} />
                                             </div>
                                         }
                                     </div>
