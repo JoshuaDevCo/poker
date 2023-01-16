@@ -1,8 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 import { PlayStatus } from './types';
 
-// const url = "ws://localhost:8000";
-const url = "ws://poker.zenstudios.xyz";
+const url = "ws://localhost:8000";
+// const url = "ws://poker.zenstudios.xyz";
 const socket: Socket = io(url);
 
 export const joinGame = (name: string) => {

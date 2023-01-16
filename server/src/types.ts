@@ -42,6 +42,7 @@ export type Room = {
 export type GameStatus = {
     round: number,
     roundFinished: boolean,
+    gameFinished: boolean,
     currentBetAmount: number;
     smallBlindAmount: number;
     bigBlindAmount: number;

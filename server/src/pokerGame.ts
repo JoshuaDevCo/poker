@@ -168,6 +168,11 @@ export default class PokerGame {
         }
     }
 
+    finishGame = (room: Room) => {
+        if (!room.gameStatus) return;
+        room.gameStatus.gameFinished = true;
+    }
+
     startNewRound = (room: Room) => {
         const shuffledCards = shuffleCards(cards);
 
@@ -181,13 +186,20 @@ export default class PokerGame {
 
         let blindTurn = rand(room.numberOfPlayers);
         if (room.gameStatus) {
-            if (room.gameStatus.round > 0 && activePlayers < 2) return;
+            if (room.gameStatus.round > 0 && activePlayers < 2) {
+                this.finishGame(room);
+                return;
+            }
             blindTurn = nextTurn(room, room.gameStatus.blindTurn);
-            if (blindTurn === -1) return;
+            if (blindTurn === -1) {
+                this.finishGame(room);
+                return;
+            }
         }
         const gameStatus: GameStatus = {
             round: 1,
             roundFinished: false,
+            gameFinished: false,
             currentBetAmount: 0,
             smallBlindAmount: 5,
             bigBlindAmount: 10,
@@ -302,10 +314,11 @@ export default class PokerGame {
             player.socket?.emit("updatedGameStatus", { room: cutSockets(room), player: cutSocket(player) });
         });
 
+
         // start new round after 10 seconds
         setTimeout(() => {
             this.startNewRound(room);
-            if (!room.players) return;
+            if (!room.players || room.gameStatus?.gameFinished) return;
             room.players.forEach((player) => {
                 player.socket?.emit("updatedGameStatus", { room: cutPlayersCards(cutRoomCards(cutSockets(room))), player: cutSocket(player) });
             });
@@ -379,6 +392,24 @@ export default class PokerGame {
                 // if (nextPlayer.playerStatus?.raised && nextPlayer.playerStatus?.subTotalBetAmount === gameStatus.currentBetAmount) {
                 //     dealCardsFlag = this.dealCards(room);
                 // }
+
+                let activePlayers = 0;
+                room.players.forEach((player) => {
+                    const { playerStatus } = player;
+                    if (playerStatus &&
+                        playerStatus.status !== PlayStatus.FOLD &&
+                        playerStatus.status !== PlayStatus.BUST &&
+                        playerStatus.status !== PlayStatus.ALLIN
+                    ) {
+                        activePlayers++;
+                    }
+                });
+
+                if (activePlayers === 1) {
+                    while (!this.dealCards(room));
+                    dealCardsFlag = true;
+                }
+                
                 log += "Call";
             } else if (status === PlayStatus.RAISE && amount) {
                 let betAmount = gameStatus.currentBetAmount + amount - playerStatus.subTotalBetAmount;
@@ -521,6 +552,7 @@ export default class PokerGame {
             gameStatus: {
                 round: 0,
                 roundFinished: false,
+                gameFinished: false,
                 currentBetAmount: 30,
                 smallBlindAmount: 5,
                 bigBlindAmount: 10,
