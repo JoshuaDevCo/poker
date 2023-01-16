@@ -1,242 +1,204 @@
 import { Socket } from "socket.io";
 import { GameStatus, Player, PlayerStatus, PlayStatus, Room } from "./types";
-import { v4 as uuidV4 } from 'uuid';
+import { v4 as uuidV4 } from "uuid";
 import { PLAYER_WAIT_TIME, ROUND_WAIT_TIME } from "./constants";
+import {
+  cards,
+  cardString,
+  cutGameStatus,
+  cutPlayers,
+  cutPlayersCards,
+  cutRoomCards,
+  cutSocket,
+  cutSockets,
+  getPlayerBySocket,
+  getPlayerIndex,
+  getRoom,
+  nextTurn,
+  prevTurn,
+  rand,
+  shuffleCards,
+  findIndexByKey,
+} from "./utils";
 
 const Hand = require("pokersolver").Hand;
 
-function rand(limit: number) {
-    return Math.floor(Math.random() * limit)
-}
-
-function getIndex(sockets: Socket[], id: string) {
-    return sockets.map((socket: Socket) => socket.id).indexOf(id);
-}
-
-function getPlayerIndex(players: Player[], id: string) {
-    return players.map(player => player.id).indexOf(id);
-}
-
-function getRoom(rooms: Room[], id: string) {
-    const index = rooms.map(room => room.id).indexOf(id);
-    return rooms[index];
-}
-
-function cutPlayers(room: Room): Room {
-    const { players, ...rest } = room;
-    return { ...rest } as Room;
-}
-
-function cutGameStatus(room: Room): Room {
-    const { gameStatus, ...rest } = room;
-    return { ...rest };
-}
-
-function cutPlayersCards(room: Room): Room {
-    const { players, ...rest } = room;
-
-    return {
-        ...rest,
-        players: players.map(player => {
-            const { playerStatus, ...rest } = player;
-            if (!playerStatus) return player;
-
-            const { deck, ...restStatus } = playerStatus;
-            return { playerStatus: { ...restStatus }, ...rest } as Player;
-        })
-    }
-}
-
-function cutRoomCards(room: Room): Room {
-    const { gameStatus, ...rest } = room;
-    if (!gameStatus?.cards) return room;
-    const { cards, ...restStatus } = gameStatus;
-    return { gameStatus: { ...restStatus }, ...rest };
-}
-
-const cards: number[] = [];
-for (let i = 0; i < 52; i++) cards[i] = i;
-
-function shuffleCards(cards: number[]) {
-    const newCards = [...cards];
-    for (let i = 0; i < 1000; i++) {
-        let location1 = rand(cards.length);
-        let location2 = rand(cards.length);
-        let tmp = newCards[location1];
-        newCards[location1] = newCards[location2];
-        newCards[location2] = tmp;
-    }
-    return newCards;
-}
-
-const nextTurn = (room: Room, turn?: number) => {
-    const { gameStatus } = room;
-    if (!gameStatus) return 0;
-    if (!turn) turn = gameStatus.playTurn;
-    while (true) {
-        turn = (turn + 1) % room.numberOfPlayers;
-        const player = room.players[turn];
-        const { playerStatus } = player;
-        if (playerStatus?.status !== PlayStatus.FOLD && playerStatus?.status !== PlayStatus.BUST) break;
-    }
-    return turn;
-}
-
-const prevTurn = (room: Room, turn?: number) => {
-    const { gameStatus } = room;
-    if (!gameStatus) return 0;
-    if (!turn) turn = gameStatus.playTurn;
-    while (true) {
-        turn = (turn - 1 + room.numberOfPlayers) % room.numberOfPlayers;
-        const player = room.players[turn];
-        const { playerStatus } = player;
-        if (playerStatus?.status !== PlayStatus.FOLD && playerStatus?.status !== PlayStatus.BUST) break;
-    }
-    return turn;
-}
-
-const cardString = (cardval: number) => {
-    const suit = ["d", "c", "h", "s"][Math.floor(cardval / 13)];
-    cardval %= 13;
-    let val = `${cardval + 2}`;
-    switch (cardval) {
-        case 8: val = 'T'; break;
-        case 9: val = 'J'; break;
-        case 10: val = 'Q'; break;
-        case 11: val = 'K'; break;
-        case 12: val = 'A'; break;
-    }
-    return val + suit;
-}
-
 export default class PokerGame {
-    private sockets: Socket[];
     private players: Player[];
     private rooms: Room[];
     constructor() {
-        this.sockets = [];
         this.players = [];
         this.rooms = [];
     }
 
     public joinGame(socket: Socket, { name }: { name: string }): void {
-        const playerId = uuidV4();
-        const player: Player = { id: playerId, name, balance: 2000 };
-        this.players.push(player);
-        this.sockets.push(socket);
+        try {
+            const playerId = uuidV4();
+            const player: Player = { id: playerId, name, balance: 2000, socket };
+            this.players.push(player);
 
-        socket.emit("joinedGame", {
-            player,
-            rooms: this.rooms.map(room => cutPlayers(room))
-        });
+            socket.emit("joinedGame", {
+                player: cutSocket(player),
+                rooms: this.rooms.map(room => cutPlayers(room))
+            });
+        } catch (error) {
+            console.log(error);
+        }
     }
 
     public leaveGame(socket: Socket): void {
-        this.leaveRoom(socket);
-        const index = getIndex(this.sockets, socket.id);
-        const player = this.players[index];
-        if (!player) return;
-        this.rooms.forEach((room) => {
-            if (room.creator.id === player.id) {
-                this.closeRoom({ roomId: room.id });
-            }
-        })
-        this.sockets.splice(index, 1);
-        this.players.splice(index, 1);
+        try {
+            this.leaveRoom(socket);
+            const player = getPlayerBySocket(this.players, socket.id);
+            if (!player) return;
+            this.rooms.forEach((room) => {
+                if (room.creator.id === player.id) {
+                    this.closeRoom({ roomId: room.id });
+                }
+            })
+            this.players = this.players.filter(player => player.socket && player.socket.id !== socket.id);
+        } catch (error) {
+            console.log(error);
+        }
     }
 
     public createRoom(socket: Socket, { name }: { name: string }): void {
-        const roomId = uuidV4();
-        const index = getIndex(this.sockets, socket.id);
-        const player = this.players[index];
-        const room: Room = {
-            id: roomId,
-            name,
-            creator: player,
-            started: false,
-            numberOfPlayers: 1,
-            players: [player]
-        };
-        this.rooms.push(room);
+        try {
+            const roomId = uuidV4();
+            const player = getPlayerBySocket(this.players, socket.id);
+            if (!player) return;
 
-        this.sockets.forEach((client: Socket) => {
-            client.emit("createdRoom", { room: client.id === socket.id ? room : cutPlayers(room) });
-        })
+            const room: Room = {
+                id: roomId,
+                name,
+                creator: cutSocket(player),
+                started: false,
+                numberOfPlayers: 1,
+                players: [player]
+            };
+            this.rooms.push(room);
+
+            this.players.forEach((player: Player) => {
+                player.socket && player.socket.emit("createdRoom", { room: player.socket.id === socket.id ? cutSockets(room) : cutPlayers(room) });
+            });
+        } catch (error) {
+            console.log(error);
+        }
     }
 
     public joinRoom(socket: Socket, { roomId }: { roomId: string }): void {
-        const index = getIndex(this.sockets, socket.id);
-        const newPlayer = this.players[index];
-        const room = getRoom(this.rooms, roomId);
-        if (room.numberOfPlayers >= 10) {
-            return;
-        }
-        if (room.players.map(player => player.id).indexOf(newPlayer.id) !== -1) {
-            return;
-        }
-
-        newPlayer.roomId = roomId;
-        room.numberOfPlayers++;
-        room.players.push(newPlayer);
-
-        this.players.forEach((player) => {
-            const index = getPlayerIndex(this.players, player.id);
-            const socket = this.sockets[index];
-            if (getPlayerIndex(room.players, player.id) === -1) {
-                socket.emit("updatedRoom", { room: cutPlayers(room) });
-            } else {
-                socket.emit("joinedPlayer", { room });
+        try {
+            const newPlayer = getPlayerBySocket(this.players, socket.id);
+            if (!newPlayer) return;
+            const room = getRoom(this.rooms, roomId);
+            if (!room) return;
+            if (room.numberOfPlayers >= 10) {
+                return;
             }
-        })
+            if (findIndexByKey(room.players, newPlayer.id) !== -1) {
+                return;
+            }
+
+            newPlayer.roomId = roomId;
+            room.numberOfPlayers++;
+            room.players.push(newPlayer);
+
+            this.players.forEach((player) => {
+                if (getPlayerIndex(room.players, player.id) === -1) {
+                    player.socket?.emit("updatedRoom", { room: cutPlayers(room) });
+                } else {
+                    player.socket?.emit("joinedPlayer", { room: cutSockets(room) });
+                }
+            })
+        } catch (error) {
+            console.log(error);
+        }
     }
 
     public leaveRoom(socket: Socket): void {
-        const index = getIndex(this.sockets, socket.id);
-        const leftPlayer = this.players[index];
-        if (!leftPlayer || !leftPlayer.roomId) return;
-        const room = getRoom(this.rooms, leftPlayer.roomId);
-        console.log(room);
-        if (!room) return;
+        try {
+            const leftPlayer = getPlayerBySocket(this.players, socket.id);
+            if (!leftPlayer || !leftPlayer.roomId) return;
+            const room = getRoom(this.rooms, leftPlayer.roomId);
+            if (!room) return;
 
-        room.numberOfPlayers--;
-        room.players = room.players.filter(player => player.id !== leftPlayer.id);
+            room.numberOfPlayers--;
+            room.players = room.players.filter(player => player.id !== leftPlayer.id);
 
-        this.players.forEach((player) => {
-            const index = getPlayerIndex(this.players, player.id);
-            const socket = this.sockets[index];
-            if (getPlayerIndex(room.players, player.id) === -1) {
-                socket.emit("updatedRoom", { room: cutPlayers(room) });
-            } else {
-                socket.emit("leftPlayer", { room });
-            }
-        })
+            this.players.forEach((player) => {
+                if (getPlayerIndex(room.players, player.id) === -1) {
+                    player.socket?.emit("updatedRoom", { room: cutPlayers(room) });
+                } else {
+                    player.socket?.emit("leftPlayer", { room: cutSockets(room) });
+                }
+            })
+        } catch (error) {
+            console.log(error);
+        }
     }
 
     public closeRoom({ roomId }: { roomId: string }): void {
-        this.rooms = this.rooms.filter(room => room.id !== roomId);
-        this.players.forEach((player) => {
-            const index = getPlayerIndex(this.players, player.id);
-            const socket = this.sockets[index];
-            socket.emit("closedRoom", { roomId });
-        })
+        try {
+            this.rooms = this.rooms.filter(room => room.id !== roomId);
+            this.players.forEach((player) => {
+                player.socket?.emit("closedRoom", { roomId });
+            })
+        } catch (error) {
+            console.log(error);
+        }
+    }
+
+    public startRoomGame({ roomId }: { roomId: string }): void {
+        try {
+            const room = getRoom(this.rooms, roomId);
+            if (!room) return;
+            room.started = true;
+            this.startNewRound(room);
+
+            this.players.forEach((player) => {
+                const playerIndex = getPlayerIndex(room.players, player.id);
+                if (playerIndex === -1) {
+                    player.socket?.emit("updatedRoom", { room: cutPlayers(cutGameStatus(room)) });
+                } else {
+                    player.socket?.emit("updatedGameStatus", { room: cutPlayersCards(cutRoomCards(cutSockets(room))), player: cutSocket(room.players[playerIndex]) });
+                }
+            })
+        } catch (error) {
+            console.log(error);
+        }
     }
 
     startNewRound = (room: Room) => {
         const shuffledCards = shuffleCards(cards);
+
+        let activePlayers = 0;
+        room.players.forEach((player) => {
+            if (!player || !player.playerStatus) return;
+            player.playerStatus.status = player.balance === 0 ? PlayStatus.BUST : PlayStatus.NONE;
+            if (player.balance > 0) activePlayers++;
+        });
+
+
         let blindTurn = rand(room.numberOfPlayers);
         if (room.gameStatus) {
+            if (room.gameStatus.round > 0 && activePlayers < 2) return;
             blindTurn = nextTurn(room, room.gameStatus.blindTurn);
+            if (blindTurn === -1) return;
         }
         const gameStatus: GameStatus = {
             round: 1,
             roundFinished: false,
             currentBetAmount: 0,
+            smallBlindAmount: 5,
+            bigBlindAmount: 10,
+            minRaiseAmount: 10,
             pot: 0,
             blindTurn,
             playTurn: blindTurn,
             deck: [],
             cards: shuffledCards,
             timestamp: 0,
+            logs: [],
         };
 
         if (room.gameStatus) {
@@ -249,6 +211,7 @@ export default class PokerGame {
             const playerStatus: PlayerStatus = {
                 totalBetAmout: 0,
                 subTotalBetAmount: 0,
+                raised: false,
                 status: PlayStatus.NONE,
                 deck: [
                     shuffledCards[index * 2],
@@ -262,7 +225,7 @@ export default class PokerGame {
         room.players.forEach((player, index) => {
             const { playerStatus } = player;
             if (playerStatus && (index === blindTurn || index === prevTurn(room, blindTurn))) {
-                let amount = index === blindTurn ? 10 : 5;
+                let amount = index === blindTurn ? gameStatus.bigBlindAmount : gameStatus.smallBlindAmount;
                 if (gameStatus.currentBetAmount < amount) gameStatus.currentBetAmount = amount;
                 if (player.balance >= amount) {
                     playerStatus.subTotalBetAmount = amount;
@@ -280,30 +243,12 @@ export default class PokerGame {
             const { gameStatus } = room;
             if (gameStatus && new Date().getTime() - gameStatus.timestamp >= PLAYER_WAIT_TIME) {
                 const player = room.players[gameStatus.playTurn];
-                const { playerStatus } = player;
-                if (!playerStatus) return;
-                const playerIndex = getPlayerIndex(this.players, player.id);
-                const socket = this.sockets[playerIndex];
+                if (!player) return;
+                const { playerStatus, socket } = player;
+                if (!playerStatus || !socket) return;
                 this.updateGameStatus(socket, { roomId: room.id, status: PlayStatus.FOLD });
             }
         }, PLAYER_WAIT_TIME);
-    }
-
-    public startRoomGame({ roomId }: { roomId: string }): void {
-        const room = getRoom(this.rooms, roomId);
-        room.started = true;
-        this.startNewRound(room);
-
-        this.players.forEach((player) => {
-            const index = getPlayerIndex(this.players, player.id);
-            const socket = this.sockets[index];
-            const playerIndex = getPlayerIndex(room.players, player.id);
-            if (playerIndex === -1) {
-                socket.emit("updatedRoom", { room: cutPlayers(cutGameStatus(room)) });
-            } else {
-                socket.emit("updatedGameStatus", { room: cutPlayersCards(cutRoomCards(room)), player: room.players[playerIndex] });
-            }
-        })
     }
 
     checkWinning = (room: Room) => {
@@ -354,9 +299,7 @@ export default class PokerGame {
         gameStatus.roundFinished = true;
 
         room.players.forEach((player) => {
-            const playerId = getPlayerIndex(this.players, player.id);
-            const socket = this.sockets[playerId];
-            socket.emit("updatedGameStatus", { room, player });
+            player.socket?.emit("updatedGameStatus", { room: cutSockets(room), player: cutSocket(player) });
         });
 
         // start new round after 10 seconds
@@ -364,10 +307,7 @@ export default class PokerGame {
             this.startNewRound(room);
             if (!room.players) return;
             room.players.forEach((player) => {
-
-                const playerId = getPlayerIndex(this.players, player.id);
-                const socket = this.sockets[playerId];
-                socket.emit("updatedGameStatus", { room: cutPlayersCards(cutRoomCards(room)), player });
+                player.socket?.emit("updatedGameStatus", { room: cutPlayersCards(cutRoomCards(cutSockets(room))), player: cutSocket(player) });
             });
         }, ROUND_WAIT_TIME);
     }
@@ -402,107 +342,150 @@ export default class PokerGame {
     }
 
     public updateGameStatus(socket: Socket, { roomId, status, amount }: { roomId: string, status: PlayStatus, amount?: number }): void {
-        const index = getIndex(this.sockets, socket.id);
-        let player = this.players[index];
-        const room = getRoom(this.rooms, roomId);
-        if (!room.gameStatus) return;
+        try {
+            let player = getPlayerBySocket(this.players, socket.id);
+            if (!player) return;
+            const room = getRoom(this.rooms, roomId);
+            if (!room) return;
+            const { gameStatus } = room;
+            if (!gameStatus) return;
 
-        const gameStatus = room.gameStatus;
-        const playerIndex = room.players.map(player => player.id).indexOf(player.id);
-        if (playerIndex === -1 || playerIndex !== gameStatus.playTurn || !gameStatus.cards) {
-            return;
-        }
-
-        player = room.players[playerIndex];
-        const playerStatus = player.playerStatus;
-        if (!playerStatus) return;
-        playerStatus.status = status;
-
-        let dealCardsFlag = false;
-        if (status === PlayStatus.CALL) {
-            let betAmount = gameStatus.currentBetAmount - playerStatus.subTotalBetAmount;
-            if (player.balance < betAmount) {
-                betAmount = player.balance;
-                playerStatus.status = PlayStatus.ALLIN;
-            }
-            player.balance -= betAmount;
-            playerStatus.subTotalBetAmount += betAmount;
-            gameStatus.pot += betAmount;
-
-            gameStatus.playTurn = nextTurn(room);
-            let nextPlayer = room.players[gameStatus.playTurn];
-            if (nextPlayer.playerStatus?.subTotalBetAmount === gameStatus.currentBetAmount) {
-                dealCardsFlag = this.dealCards(room);
-            }
-        } else if (status === PlayStatus.RAISE && amount) {
-            let betAmount = gameStatus.currentBetAmount + amount - playerStatus.subTotalBetAmount;
-            if (player.balance < betAmount) {
+            const playerIndex = findIndexByKey(room.players, player.id);
+            if (playerIndex === -1 || playerIndex !== gameStatus.playTurn || !gameStatus.cards) {
                 return;
             }
-            player.balance -= betAmount;
-            gameStatus.currentBetAmount += amount;
-            playerStatus.subTotalBetAmount += betAmount
-            gameStatus.pot += betAmount;
 
-            gameStatus.playTurn = nextTurn(room);
-        } else if (status === PlayStatus.CHECK) {
-            if (nextTurn(room) === nextTurn(room, gameStatus.blindTurn)) {
-                dealCardsFlag = this.dealCards(room);
-            } else {
-                gameStatus.playTurn = nextTurn(room);
-            }
-        } else if (status === PlayStatus.FOLD) {
-            playerStatus.status = PlayStatus.FOLD;
-            gameStatus.playTurn = nextTurn(room);
+            player = room.players[playerIndex];
+            const { playerStatus } = player;
+            if (!playerStatus) return;
 
-            let nextPlayer = room.players[gameStatus.playTurn];
-            if (nextPlayer.playerStatus?.subTotalBetAmount === gameStatus.currentBetAmount) {
-                dealCardsFlag = this.dealCards(room);
-            }
+            let log = player.name + ": ";
 
-            let activePlayers = 0;
-            room.players.forEach((player) => {
-                const { playerStatus } = player;
-                if (playerStatus &&
-                    playerStatus.status !== PlayStatus.FOLD &&
-                    playerStatus.status !== PlayStatus.BUST &&
-                    playerStatus.status !== PlayStatus.ALLIN
-                ) {
-                    activePlayers++;
+            playerStatus.status = status;
+
+            let dealCardsFlag = false;
+            if (status === PlayStatus.CALL) {
+                let betAmount = gameStatus.currentBetAmount - playerStatus.subTotalBetAmount;
+                if (player.balance < betAmount) {
+                    betAmount = player.balance;
+                    playerStatus.status = PlayStatus.ALLIN;
                 }
+                player.balance -= betAmount;
+                playerStatus.subTotalBetAmount += betAmount;
+                gameStatus.pot += betAmount;
+
+                gameStatus.playTurn = nextTurn(room);
+                // let nextPlayer = room.players[gameStatus.playTurn];
+                // if (nextPlayer.playerStatus?.raised && nextPlayer.playerStatus?.subTotalBetAmount === gameStatus.currentBetAmount) {
+                //     dealCardsFlag = this.dealCards(room);
+                // }
+                log += "Call";
+            } else if (status === PlayStatus.RAISE && amount) {
+                let betAmount = gameStatus.currentBetAmount + amount - playerStatus.subTotalBetAmount;
+                if (player.balance < betAmount) {
+                    return;
+                }
+                if (gameStatus.minRaiseAmount <= amount) {
+                    gameStatus.minRaiseAmount = amount;
+                } else {
+                    return;
+                }
+                player.balance -= betAmount;
+                gameStatus.currentBetAmount += amount;
+                playerStatus.subTotalBetAmount += betAmount
+                playerStatus.raised = true;
+                gameStatus.pot += betAmount;
+
+                gameStatus.playTurn = nextTurn(room);
+
+                log += ("Raise " + amount);
+            } else if (status === PlayStatus.CHECK) {
+                if (nextTurn(room) === nextTurn(room, gameStatus.blindTurn)) {
+                    dealCardsFlag = this.dealCards(room);
+                } else {
+                    gameStatus.playTurn = nextTurn(room);
+                }
+                log += "Check";
+            } else if (status === PlayStatus.FOLD) {
+                playerStatus.status = PlayStatus.FOLD;
+                gameStatus.playTurn = nextTurn(room);
+                if (gameStatus.playTurn === -1) {
+                    while (!this.dealCards(room));
+                    return;
+                }
+
+                let nextPlayer = room.players[gameStatus.playTurn];
+                if (nextPlayer.playerStatus?.subTotalBetAmount === gameStatus.currentBetAmount) {
+                    dealCardsFlag = this.dealCards(room);
+                }
+
+                let activePlayers = 0;
+                room.players.forEach((player) => {
+                    const { playerStatus } = player;
+                    if (playerStatus &&
+                        playerStatus.status !== PlayStatus.FOLD &&
+                        playerStatus.status !== PlayStatus.BUST &&
+                        playerStatus.status !== PlayStatus.ALLIN
+                    ) {
+                        activePlayers++;
+                    }
+                });
+
+                if (activePlayers === 1) {
+                    while (!this.dealCards(room));
+                    dealCardsFlag = true;
+                }
+                log += "Check";
+            } else if (status === PlayStatus.ALLIN) {
+                playerStatus.status = PlayStatus.ALLIN;
+                playerStatus.subTotalBetAmount += player.balance;
+                if (gameStatus.currentBetAmount < playerStatus.subTotalBetAmount) {
+                    gameStatus.currentBetAmount = playerStatus.subTotalBetAmount;
+                    const raiseAmount = playerStatus.subTotalBetAmount - gameStatus.currentBetAmount;
+                    if (gameStatus.minRaiseAmount < raiseAmount) {
+                        gameStatus.minRaiseAmount = raiseAmount;
+                    }
+                }
+                gameStatus.pot += player.balance;
+                player.balance = 0;
+                gameStatus.playTurn = nextTurn(room);
+
+                if (gameStatus.playTurn === -1) {
+                    while (!this.dealCards(room));
+                    dealCardsFlag = true;
+                }
+
+                log += "All In";
+            }
+
+            gameStatus.timestamp = new Date().getTime();
+
+            if (dealCardsFlag) return;
+
+            gameStatus.logs.push(log);
+
+            room.players.forEach((player) => {
+                player.socket?.emit("updatedGameStatus", { room: cutPlayersCards(cutRoomCards(cutSockets(room))), player: cutSocket(player) });
             });
 
-            if (activePlayers === 1) {
-                while (!this.dealCards(room));
-            }
-        }
 
-        room.gameStatus.timestamp = new Date().getTime();
-
-        if (dealCardsFlag) return;
-
-        room.players.forEach((player) => {
-            const index = getPlayerIndex(this.players, player.id);
-            const socket = this.sockets[index];
-            socket.emit("updatedGameStatus", { room: cutPlayersCards(cutRoomCards(room)), player });
-        });
-        
-
-        setTimeout(() => {
-            const { gameStatus } = room;
-            if (gameStatus && new Date().getTime() - gameStatus.timestamp >= PLAYER_WAIT_TIME) {
-                const player = room.players[gameStatus.playTurn];
-                const { playerStatus } = player;
-                if (!playerStatus) return;
-                const playerIndex = getPlayerIndex(this.players, player.id);
-                const socket = this.sockets[playerIndex];
-                if (playerStatus.subTotalBetAmount === gameStatus.currentBetAmount) {
-                    this.updateGameStatus(socket, { roomId: room.id, status: PlayStatus.CHECK });
-                } else {
-                    this.updateGameStatus(socket, { roomId: room.id, status: PlayStatus.FOLD });
+            setTimeout(() => {
+                const { gameStatus } = room;
+                if (gameStatus && new Date().getTime() - gameStatus.timestamp >= PLAYER_WAIT_TIME) {
+                    const player = room.players[gameStatus.playTurn];
+                    if (!player) return;
+                    const { playerStatus, socket } = player;
+                    if (!playerStatus || !socket) return;
+                    if (playerStatus.subTotalBetAmount === gameStatus.currentBetAmount) {
+                        this.updateGameStatus(socket, { roomId: room.id, status: PlayStatus.CHECK });
+                    } else {
+                        this.updateGameStatus(socket, { roomId: room.id, status: PlayStatus.FOLD });
+                    }
                 }
-            }
-        }, PLAYER_WAIT_TIME);
+            }, PLAYER_WAIT_TIME);
+        } catch (error) {
+            console.log(error);
+        }
     }
 
     public test() {
@@ -520,6 +503,7 @@ export default class PokerGame {
                 playerStatus: {
                     totalBetAmout: betAmounts[i],
                     subTotalBetAmount: 0,
+                    raised: false,
                     status: folds[i] ? PlayStatus.FOLD : PlayStatus.CALL,
                     deck: shuffledCards.slice(i * 2, i * 2 + 2),
                     winAmount: 0,
@@ -538,11 +522,15 @@ export default class PokerGame {
                 round: 0,
                 roundFinished: false,
                 currentBetAmount: 30,
+                smallBlindAmount: 5,
+                bigBlindAmount: 10,
+                minRaiseAmount: 10,
                 pot,
                 blindTurn: 0,
                 playTurn: 0,
                 deck: shuffledCards.slice(-5),
                 timestamp: 0,
+                logs: [],
             }
         }
 

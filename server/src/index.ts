@@ -6,7 +6,7 @@ import cors from 'cors';
 import PokerGame from "./pokerGame";
 import fs from 'fs';
 
-const port: number = 4000
+const port: number = 8000
 
 class App {
     private server: http.Server;
@@ -19,10 +19,10 @@ class App {
 
         const app = express();
         app.use(cors());
-        app.use(express.static(path.join(__dirname, '../../client/build')));
+        app.use(express.static(path.join(__dirname, '../../poker-client/build')));
         app.get('*', (req, res) => {
             const contents = fs.readFileSync(
-                path.resolve(__dirname, '../../client/build/index.html'),
+                path.resolve(__dirname, '../../poker-client/build/index.html'),
                 'utf8',
             )
             res.send(contents)

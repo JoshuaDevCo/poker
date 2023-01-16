@@ -1,4 +1,3 @@
-import { Socket } from "socket.io";
 
 export type PlayerStatus = {
     totalBetAmout: number;
@@ -24,7 +23,6 @@ export type Player = {
     id: string;
     name: string;
     balance: number;
-    socket?: Socket;
     roomId?: string;
     playerStatus?: PlayerStatus;
 };
@@ -43,8 +41,6 @@ export type GameStatus = {
     round: number,
     roundFinished: boolean,
     currentBetAmount: number;
-    smallBlindAmount: number;
-    bigBlindAmount: number;
     minRaiseAmount: number;
     pot: number;
     blindTurn: number;
