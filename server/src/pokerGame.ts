@@ -26,11 +26,9 @@ const Hand = require("pokersolver").Hand;
 export default class PokerGame {
     private players: Player[];
     private rooms: Room[];
-    private logs: string[];
     constructor() {
         this.players = [];
         this.rooms = [];
-        this.logs = [];
     }
 
     public joinGame(socket: Socket, { name }: { name: string }): void {
@@ -200,6 +198,7 @@ export default class PokerGame {
             deck: [],
             cards: shuffledCards,
             timestamp: 0,
+            logs: [],
         };
 
         if (room.gameStatus) {
@@ -398,7 +397,7 @@ export default class PokerGame {
 
                 gameStatus.playTurn = nextTurn(room);
 
-                log += ("Raise " + betAmount);
+                log += ("Raise " + amount);
             } else if (status === PlayStatus.CHECK) {
                 if (nextTurn(room) === nextTurn(room, gameStatus.blindTurn)) {
                     dealCardsFlag = this.dealCards(room);
@@ -462,10 +461,10 @@ export default class PokerGame {
 
             if (dealCardsFlag) return;
 
-            this.logs.push(log);
+            gameStatus.logs.push(log);
 
             room.players.forEach((player) => {
-                player.socket?.emit("updatedGameStatus", { room: cutPlayersCards(cutRoomCards(cutSockets(room))), player: cutSocket(player), logs: this.logs });
+                player.socket?.emit("updatedGameStatus", { room: cutPlayersCards(cutRoomCards(cutSockets(room))), player: cutSocket(player) });
             });
 
 
@@ -530,6 +529,7 @@ export default class PokerGame {
                 playTurn: 0,
                 deck: shuffledCards.slice(-5),
                 timestamp: 0,
+                logs: [],
             }
         }
 

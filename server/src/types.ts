@@ -52,4 +52,5 @@ export type GameStatus = {
     deck: number[];
     cards?: number[];
     timestamp: number;
+    logs: string[];
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import Card from 'components/Card';
 
@@ -7,15 +7,19 @@ import './style.scss';
 import { useSelector } from 'store';
 import { Player, PlayStatus } from 'utils/types';
 import PlayerItem from 'components/Player';
-import NumericInput from 'react-numeric-input';
 import { allIn, call, check, fold, raise } from 'utils/socket';
 
 
 const Playground = () => {
-    const { currentRoom, logs } = useSelector((state) => state.currentRoom);
+    const { currentRoom } = useSelector((state) => state.currentRoom);
     const { player } = useSelector((state) => state.player);
     const [raiseAmount, setRaiseAmount] = useState(10);
 
+    useEffect(() => {
+        if (!currentRoom?.gameStatus) return;
+        setRaiseAmount(Math.max(raiseAmount, currentRoom.gameStatus.minRaiseAmount))
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentRoom]);
 
     const handleCallBtn = () => {
         if (!currentRoom) return;
@@ -88,7 +92,13 @@ const Playground = () => {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <NumericInput step={5} min={currentRoom.gameStatus.minRaiseAmount} value={raiseAmount} onChange={(value: number | null) => { if (value !== null) setRaiseAmount(value) }} />
+                                                <input
+                                                    type="number"
+                                                    step={5}
+                                                    onChange={(e) => setRaiseAmount(parseInt(e.target.value) || 0)}
+                                                    value={raiseAmount}
+                                                    min={currentRoom.gameStatus.minRaiseAmount}
+                                                />
                                             </div>
                                         }
                                     </div>
@@ -177,7 +187,7 @@ const Playground = () => {
             }
             <div className='logs'>
                 <div>
-                    {logs && logs.map((log, index) => (
+                    {currentRoom?.gameStatus && currentRoom.gameStatus.logs.map((log, index) => (
                         <p key={log + index}>{log}</p>
                     ))}
 
